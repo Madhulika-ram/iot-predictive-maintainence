@@ -90,6 +90,12 @@ streamlit run dashboard/app.py
 ```
 
 ---
+## Key Results: 
+* 99.5% accuracy
+* 0.95 F1-score
+* 50 anomalies detected
+
+---
 
 ## Results & Insights
 
