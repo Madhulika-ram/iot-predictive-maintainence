@@ -1,7 +1,10 @@
 # Smart IoT Predictive Maintenance System
 
 > Simulates an industrial IoT environment to detect sensor anomalies, predict machine failures, and generate actionable maintenance alerts — all visualised through an interactive dashboard.
-
+<img width="1792" height="860" alt="Sensor_Trends" src="https://github.com/user-attachments/assets/9250845a-ec7b-47f2-821d-23fa43e33094" />
+<img width="1786" height="547" alt="Anamoly_alert_breakdowns" src="https://github.com/user-attachments/assets/7ecd0287-9a32-4d6b-8764-3f40c5ea205b" />
+<img width="1792" height="612" alt="Anamoly_alerts_detail" src="https://github.com/user-attachments/assets/18072c4b-e4f1-4e46-9ead-0d77ea58e415" />
+<img width="1813" height="765" alt="Explore_data" src="https://github.com/user-attachments/assets/00657fcd-415a-4e0a-8fa1-312287545011" />
 
 ## Problem Statement
 
