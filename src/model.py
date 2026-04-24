@@ -1,39 +1,61 @@
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier # for classification
-from sklearn.model_selection import train_test_split # for splitting data into training and testing sets
-from sklearn.metrics import accuracy_score, classification_report # for evaluating model performance
-
-df = pd.read_csv("data/processed/anomalies.csv")
-
-# Create target
-df['failure'] = (df['anomaly'] == -1).astype(int) # create binary target variable where 1 indicates failure (anomaly) and 0 indicates normal operation
-
-X = df[['temperature', 'vibration', 'pressure']] # features for model training
-y = df['failure'] # target variable for model training
-
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split( 
-    X, y, test_size=0.2, random_state=42
-)
-
-model = RandomForestClassifier(n_estimators=100) # initialize Random Forest model with 100 trees
-model.fit(X_train, y_train) # fit the model to the training data
-
-y_pred = model.predict(X_test) # predict on the test set and evaluate performance
-
-print("Accuracy:", accuracy_score(y_test, y_pred))
-print(classification_report(y_test, y_pred))
-
-# Feature importance
+import joblib 
 import matplotlib.pyplot as plt
+from pathlib import Path
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
 
-importance = model.feature_importances_ # get feature importance scores from the trained model
-features = X.columns # plot feature importance to visualize which features are most influential in predicting failures
+# Train a Random Forest model on the preprocessed data with ground-truth labels, evaluate its performance, save the trained model for later use in the dashboard, and generate a feature importance plot to visualize which features are most influential in predicting failures
+def train_model(input_path: str = "data/processed/anomalies.csv",
+                model_output: str = "data/processed/rf_model.pkl") -> None:
 
-plt.bar(features, importance)
-plt.title("Feature Importance")
-plt.show()
+    Path(model_output).parent.mkdir(parents=True, exist_ok=True)
 
-# add small random noise to the features to make the model more robust to real-world data variability
-X = df[['temperature', 'vibration', 'pressure']] + np.random.normal(0, 0.5, df[['temperature','vibration','pressure']].shape) 
+    df = pd.read_csv(input_path)
+    # If actual_failure column is missing, it likely means the data was not generated with labels. In that case, we cannot train a supervised model, so we raise an error prompting the user to re-run the data generation step to include ground-truth labels.
+    if "actual_failure" not in df.columns:
+        raise ValueError(
+            "Column 'actual_failure' not found. Re-run data_generator.py to get ground-truth labels."
+        )
+# Define the feature columns and target variable for model training, print the class distribution to understand the imbalance in the dataset, split the data into training and testing sets while stratifying to maintain class distribution, train a Random Forest classifier with class weighting to handle the imbalance, evaluate the model's performance using accuracy and classification report, save the trained model to a file for later use in the dashboard, and generate a feature importance plot to visualize which features are most influential in predicting failures
+    feature_cols = ['temperature', 'vibration', 'pressure']
+    X = df[feature_cols]
+    y = df['actual_failure']
+
+    print(f"Class distribution — Normal: {(y==0).sum()}, Failure: {(y==1).sum()}")
+# Split the data into training and testing sets with stratification to maintain class distribution, using 20% of the data for testing and a random state for reproducibility
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+# Train a Random Forest classifier with 100 trees and class weighting to handle the imbalanced dataset (950 normal : 50 failure), and fit the model to the training data
+    model = RandomForestClassifier(
+        n_estimators=100,
+        class_weight='balanced',  # handles the imbalanced dataset (950 normal : 50 failure)
+        random_state=42
+    )
+    model.fit(X_train, y_train)
+# Predict on the test set and evaluate the model's performance using accuracy and a classification report that includes precision, recall, and F1-score for both classes (normal and failure)
+    y_pred = model.predict(X_test)
+    print(f"\nAccuracy: {accuracy_score(y_test, y_pred):.4f}")
+    print(classification_report(y_test, y_pred, target_names=["Normal", "Failure"]))
+
+    # Save trained model so it can be loaded in the dashboard for live scoring
+    joblib.dump(model, model_output)
+    print(f"Model saved to {model_output}")
+
+    # Feature importance plot
+    importance = model.feature_importances_
+    plt.figure(figsize=(6, 4))
+    plt.bar(feature_cols, importance, color=['#378ADD', '#1D9E75', '#D85A30'])
+    plt.title("Feature Importance")
+    plt.ylabel("Importance score")
+    plt.tight_layout()
+    plt.savefig("data/processed/feature_importance.png", dpi=150)
+    plt.show()
+    print("Feature importance chart saved.")
+
+# Execute the model training function when the script is run directly
+if __name__ == "__main__":
+    train_model()
