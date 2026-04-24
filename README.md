@@ -1,137 +1,213 @@
-# IoT Predictive Maintenance System
+# Smart IoT Predictive Maintenance System
 
-## Overview
+> Simulates an industrial IoT environment to detect sensor anomalies, predict machine failures, and generate actionable maintenance alerts — all visualised through an interactive dashboard.
 
-This project simulates an IoT-based predictive maintenance system to monitor machine health using sensor data. It detects anomalies, predicts potential failures, and generates actionable alerts to prevent unexpected breakdowns.
-
----
 
 ## Problem Statement
 
-In industrial environments, machines often fail unexpectedly due to:
+In industrial environments, machines fail unexpectedly due to overheating, excessive vibration, and pressure fluctuations. This leads to costly downtime, increased maintenance spend, and safety risks. Traditional rule-based monitoring reacts after damage occurs.
 
-* Overheating
-* Excessive vibration
-* Pressure fluctuations
-
-This leads to:
-
-* High downtime
-* Increased maintenance cost
-* Safety risks
+This project takes a predictive approach — analysing live sensor streams to catch anomalies before they become failures.
 
 ---
 
-## Solution
+## Solution Overview
 
-This system analyzes sensor data (temperature, vibration, pressure) to:
+The system analyses three sensor channels — **temperature**, **vibration**, and **pressure** — through a machine learning pipeline:
 
-* Detect anomalies using machine learning
-* Predict potential failures
-* Generate intelligent alerts
-* Visualize insights through an interactive dashboard
+1. Detects anomalies using **Isolation Forest** (unsupervised)
+2. Predicts failures using **Random Forest** trained on ground-truth labels
+3. Classifies each anomaly into a specific alert type (overheating, mechanical fault, pressure spike)
+4. Visualises everything through an interactive **Streamlit dashboard**
 
 ---
 
-## Key Features
+## Project Structure
 
-* Sensor data simulation (realistic IoT scenario)
-* Anomaly detection using Isolation Forest
-* Failure prediction using Random Forest
-* Alert generation system for decision-making
-* Interactive dashboard using Streamlit
+```
+iot-predictive-maintenance/
+├── src/
+│   ├── data_generator.py       # Simulates sensor data with injected failures
+│   ├── preprocessing.py        # StandardScaler + saves scaler.pkl
+│   ├── anomaly_detection.py    # Isolation Forest anomaly flagging
+│   ├── alerts.py               # Rule-based alert classification
+│   ├── model.py                # Random Forest failure prediction
+│   └── run_pipeline.py         # Single-command pipeline runner
+├── dashboard/
+│   └── app.py                  # Streamlit dashboard
+├── data/
+│   ├── raw/                    # Generated sensor data
+│   └── processed/              # Scaled data, anomalies, alerts, models
+├── requirements.txt
+├── .gitignore
+└── README.md
+```
 
 ---
 
 ## Tech Stack
 
-* Python
-* Pandas, NumPy
-* Scikit-learn
-* Matplotlib, Seaborn
-* Streamlit
+| Layer | Tools |
+|---|---|
+| Data & ML | Python, NumPy, Pandas, scikit-learn |
+| Visualisation | Streamlit, Matplotlib, Seaborn |
+| Model persistence | joblib |
+| Environment | venv |
 
 ---
 
-## How to Run
+## Getting Started
 
-### 1. Create Virtual Environment
+### 1. Clone the repository
 
 ```bash
+git clone https://github.com/your-username/iot-predictive-maintenance.git
+cd iot-predictive-maintenance
+```
+
+### 2. Create and activate virtual environment
+
+```powershell
 python -m venv venv
+.\venv\Scripts\Activate.ps1     # PowerShell
+# or
+venv\Scripts\activate.bat       # Command Prompt
 ```
 
-### 2. Activate (PowerShell)
-
-```bash
-.\venv\Scripts\Activate.ps1
-```
-
-### 3. Install Dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Run Pipeline
+### 4. Run the pipeline
 
 ```bash
-python src/data_generator.py
-python src/preprocessing.py
-python src/anomaly_detection.py
-python src/model.py
-python src/alerts.py
+python src/run_pipeline.py
 ```
 
-### 5. Launch Dashboard
+This runs all four stages in order — data generation → preprocessing → anomaly detection → alert generation — and stops immediately with a clear error message if any step fails.
+
+### 5. Train the prediction model
+
+```bash
+python src/model.py
+```
+
+### 6. Launch the dashboard
 
 ```bash
 streamlit run dashboard/app.py
 ```
 
+Opens automatically at `http://localhost:8501`.
+
 ---
-## Key Results: 
-* 99.5% accuracy
-* 0.95 F1-score
-* 50 anomalies detected
+
+## Pipeline Stages
+
+```
+data_generator.py
+      │  1000 rows of sensor data + ground-truth failure labels
+      ▼
+preprocessing.py
+      │  StandardScaler → scaled_data.csv + scaler.pkl
+      ▼
+anomaly_detection.py
+      │  Isolation Forest → anomalies.csv (anomaly flag + raw sensor values)
+      ▼
+alerts.py
+      │  Rule-based classification → alerts.csv
+      ▼
+model.py
+      │  Random Forest on ground-truth labels → rf_model.pkl
+      ▼
+dashboard/app.py
+         Streamlit visualisation
+```
+
+---
+
+## How It Works
+
+### Anomaly Detection — Isolation Forest
+
+Isolation Forest is an unsupervised algorithm that isolates anomalies by randomly partitioning the feature space. Anomalous points require fewer splits to isolate, giving them a lower anomaly score. No labels are needed — it learns purely from the data distribution.
+
+`contamination=0.05` tells the model to expect approximately 5% anomalies across 1000 readings.
+
+### Failure Prediction — Random Forest
+
+Random Forest is a supervised ensemble model trained on the `actual_failure` column — ground-truth labels from the data generator, not derived from Isolation Forest output. This avoids label leakage, where a model trained on its own predictions will always score artificially high.
+
+`class_weight='balanced'` handles the 950:50 class imbalance between normal and failure records.
+
+### Alert Classification
+
+Each anomaly is classified into one of four types by comparing real sensor values (in original units) against physics-based thresholds:
+
+| Alert | Condition | Meaning |
+|---|---|---|
+| High temperature | temp_raw > 40°C | Overheating risk |
+| High vibration | vibration_raw > 8 mm/s | Mechanical fault |
+| Pressure spike | pressure_raw > 115 bar | System instability |
+| General anomaly | None of the above | Pattern-based outlier |
+
+---
+
+## Dashboard Features
+
+- **4 KPI cards** — total records, anomalies detected, anomaly rate, top alert type
+- **Sensor trend chart** — temperature, vibration, pressure over time in real units
+- **Alert breakdown chart** — distribution of alert types
+- **Anomaly alerts table** — filterable list of flagged records with sensor readings
+- **Data explorer** — filter between all records, anomalies only, or normal only
+
+---
+
+## Key Design Decisions
+
+**Why Isolation Forest for anomaly detection?**
+It is unsupervised — no labels required — and well-suited for multivariate tabular data with a small anomaly fraction. It is also computationally efficient and interpretable.
+
+**Why Random Forest for failure prediction?**
+Tree-based models handle non-linear feature interactions naturally, are robust to outliers, and provide feature importance scores out of the box. The ensemble approach reduces overfitting on a small dataset.
+
+**Why save the scaler?**
+The `scaler.pkl` file ensures that any new sensor data is scaled consistently with the training distribution. Without it, live scoring would use different statistics and produce unreliable predictions.
 
 ---
 
 ## Results & Insights
 
-* Temperature and vibration are the strongest indicators of machine failure
-* Early anomaly detection can reduce downtime significantly
-* Alert system provides actionable insights for maintenance decisions
+- Temperature and vibration are the strongest predictors of failure (see `Feature_Importance.png`)
+- Pressure contributes less than 10% to model decisions in this simulated dataset
+- Early anomaly detection flags failures before they reach critical thresholds
 
-Note: Current failure labels are derived from anomaly detection, leading to high model accuracy. In real-world scenarios, labels would come from actual failure logs.
+> **Note:** Failure labels in this project are synthetically injected during data generation. In a real deployment, labels would come from maintenance logs or engineer-tagged failure events.
 
 ---
 
 ## Future Improvements
 
-* Integrate real IoT sensor data
-* Add time-series forecasting (LSTM / ARIMA)
-* Deploy using Streamlit Cloud
-* Add GenAI-based automated explanations
+- [ ] Integrate real IoT sensor streams (MQTT / Kafka)
+- [ ] Add time-series forecasting (LSTM / ARIMA) for failure horizon prediction
+- [ ] Deploy to Streamlit Cloud
+- [ ] Add GenAI-powered alert explanations
+- [ ] Extend to multi-machine monitoring with per-device anomaly profiles
 
 ---
 
 ## Use Cases
 
-* Manufacturing plants
-* Smart factories
-* Power systems
-* Industrial automation
-
----
-
-## Dashboard Preview
-
-<img width="1876" height="842" alt="SmartIoTPredictiveSystem" src="https://github.com/user-attachments/assets/edcda9c7-1052-40b7-9a12-db010e94934a" />
-
+- Manufacturing plant monitoring
+- Smart factory predictive maintenance
+- Power generation systems
+- Industrial automation pipelines
 
 ---
 
 ## Author
 
-Ramaneti Madhulika
+**Ramaneti Madhulika**  
+[GitHub](https://github.com/Madhulika-ram) · [LinkedIn](https://linkedin.com/in/ramaneti-madhulika)
