@@ -184,6 +184,7 @@ The `scaler.pkl` file ensures that any new sensor data is scaled consistently wi
 ## Results & Insights
 
 - Temperature and vibration are the strongest predictors of failure (see `Feature_Importance.png`)
+  <img width="600" height="400" alt="Featureimportance" src="https://github.com/user-attachments/assets/a2778f0a-3873-45b5-9b63-be7cd1229b20" />
 - Pressure contributes less than 10% to model decisions in this simulated dataset
 - Early anomaly detection flags failures before they reach critical thresholds
 
